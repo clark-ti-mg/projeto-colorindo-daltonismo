@@ -1,7 +1,7 @@
 # Relatório de Estimativas de Tamanho e Complexidade (GPR 3)
-**Projeto:** Colorindo o Daltonismo
+**Projeto:** Colorindo o Daltonismo 3.0  
 **Data:** 21/01/2026  
-**Responsáveis:** Miguel e Clark  
+**Responsáveis:** Miguel e Clark 
 
 ## 1. Metodologia de Estimativa
 Para o estabelecimento das estimativas, a equipe utilizou a técnica de **Analogia e Julgamento Especialista**, considerando projetos anteriores de web development e data mining. As tarefas foram classificadas em níveis de complexidade (Baixa, Média, Alta) baseadas no impacto na arquitetura SOLID.
