@@ -4,14 +4,18 @@ from .core.math_utils import PerceptualColorMath
 from .services.translation import GoogleTranslationService
 from .data.repository import ColorRepository
 from .services.color_manager import ColorManager
+from fastapi.staticfiles import StaticFiles
 import os
 
-app = FastAPI(title="Colorindo o Daltonismo 3.0")
+app = FastAPI(title="Colorindo o Daltonismo")
 
 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 csv_path = os.path.join(base_dir, "color_names.csv")
 index_path = os.path.join(base_dir, "templates", "index.html")
 converter_path = os.path.join(base_dir, "templates", "converter.html")
+
+app.mount("/css", StaticFiles(directory="templates/css"), name="css")
+app.mount("/img", StaticFiles(directory="templates/img"), name="img")
 
 math_tool = PerceptualColorMath()
 translator = GoogleTranslationService()

@@ -1,0 +1,32 @@
+# --- Python ---
+__pycache__/
+
+# --- Testes e Cobertura ---
+.pytest_cache/
+
+
+# --- Distribuição / Pacotes ---
+dist/
+build/
+*.egg-info/
+*.egg
+
+# --- Logs ---
+*.log
+logs/
+
+# --- Sistema (Windows/macOS) ---
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+
+# --- IDEs ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- Frontend Temporários ---
+# Se você usar algum pré-processador no futuro
+.sass-cache/

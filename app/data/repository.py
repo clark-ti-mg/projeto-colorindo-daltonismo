@@ -1,40 +1,74 @@
-from difflib import SequenceMatcher
+import math
 import pandas as pd
+from difflib import SequenceMatcher
 from ..core.interfaces import IColorMath
 
 class ColorRepository:
-    def __init__(self, csv_path: str, math_service: IColorMath):
-        self.df = pd.read_csv(csv_path)
-        self.math = math_service
+    """
+    Gerencia a busca e persistência de dados de cores.
+    Aceita um caminho de arquivo CSV ou um DataFrame diretamente.
+    """
+
+    def __init__(self, data_source, math_service: IColorMath):
+        # Resolve a fonte de dados: se for string, carrega o CSV. 
+        # Se for DataFrame, faz uma cópia.
+        self._df = self._load_data(data_source)
+        self._math = math_service
         self._normalize_data()
 
-    def _normalize_data(self):
-        # Garante que o HEX não tenha # extra e esteja limpo
-        self.df['Hex (24 bit)'] = self.df['Hex (24 bit)'].astype(str).str.replace('#', '').str.strip().str.upper()
-        self.df['Name_Lower'] = self.df['Name'].str.lower().str.strip()
+    def _load_data(self, data_source) -> pd.DataFrame:
+        """Helper para carregar os dados de diferentes fontes."""
+        if isinstance(data_source, str):
+            return pd.read_csv(data_source)
+        if isinstance(data_source, pd.DataFrame):
+            return data_source.copy()
+        raise TypeError("data_source deve ser um caminho (str) ou um pandas.DataFrame")
+
+    def _normalize_data(self) -> None:
+        """Prepara os dados para otimizar as buscas."""
+        self._df['Hex_Clean'] = (
+            self._df['Hex (24 bit)']
+            .astype(str)
+            .str.replace('#', '', regex=False)
+            .str.strip()
+            .str.upper()
+        )
+        self._df['Name_Lower'] = self._df['Name'].str.lower().str.strip()
 
     def find_nearest_by_hex(self, target_hex: str):
-        clean_hex = target_hex.replace('#', '').upper()
-        target_rgb = self.math.hex_to_rgb(clean_hex)
-        target_hsl = self.math.rgb_to_hsl(*target_rgb)
+        """Encontra a cor mais próxima usando distância perceptual no espaço HSL."""
+        clean_target = target_hex.replace('#', '').upper()
+        target_rgb = self._math.hex_to_rgb(clean_target)
+        target_hsl = self._math.rgb_to_hsl(*target_rgb)
         
-        def get_dist(row_hex):
-            try:
-                rgb = self.math.hex_to_rgb(row_hex)
-                return self.math.calculate_distance(target_hsl, self.math.rgb_to_hsl(*rgb))
-            except: return 999
-            
-        distances = self.df['Hex (24 bit)'].apply(get_dist)
+        distances = self._df['Hex_Clean'].apply(
+            self._calculate_row_distance, 
+            args=(target_hsl,)
+        )
+        
         idx = distances.idxmin()
-        return self.df.loc[idx], distances[idx]
+        return self._df.loc[idx], distances[idx]
 
-    def find_by_name_fuzzy(self, search_name: str):
-        search_name = search_name.lower().strip()
+    def find_by_name_fuzzy(self, search_name: str, threshold: float = 0.95):
+        """Busca por nome com rigor de threshold usando comparação segura de floats."""
+        target_name = search_name.lower().strip()
         
-        def get_similarity(row_name):
-            # SequenceMatcher dá um score de 0 a 1
-            return SequenceMatcher(None, search_name, row_name).ratio()
+        similarities = self._df['Name_Lower'].apply(
+            lambda x: SequenceMatcher(None, target_name, str(x)).ratio()
+        )
         
-        similarities = self.df['Name_Lower'].apply(get_similarity)
         idx = similarities.idxmax()
-        return self.df.loc[idx], similarities[idx]
+        score = similarities[idx]
+
+        if score > threshold or math.isclose(score, threshold, rel_tol=1e-7):
+            return self._df.loc[idx], score
+        
+        return None, score
+
+    def _calculate_row_distance(self, row_hex: str, target_hsl: tuple) -> float:
+        try:
+            rgb = self._math.hex_to_rgb(row_hex)
+            hsl = self._math.rgb_to_hsl(*rgb)
+            return self._math.calculate_distance(target_hsl, hsl)
+        except (ValueError, TypeError, KeyError):
+            return float('inf')
